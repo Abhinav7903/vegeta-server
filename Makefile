@@ -8,47 +8,46 @@ SERVER_DIR = cmd/server
 all: deps fmt lint build test
 
 build: deps fmt
-	CGO_ENABLED=0 go build -v -o bin/vegeta-server -a -tags=netgo \
+	GOFLAGS=-mod=mod CGO_ENABLED=0 go build -v -o bin/vegeta-server -a -tags=netgo \
 		-ldflags '-s -w -extldflags "-static" -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)' ${SERVER_DIR}/main.go
 
 clean:
 	rm -f coverage.txt
+	rm -f profile.cov
 	rm -rf bin
 	rm -rf vendor
 
 deps:
-	go mod vendor
-	go mod download
+	GOFLAGS=-mod=mod go mod download
 
 update-deps:
-	go mod verify
-	go mod tidy
+	GOFLAGS=-mod=mod go mod verify
+	GOFLAGS=-mod=mod go mod tidy
 
 install:
-	$(shell ./scripts/make-install.sh)
+	./scripts/make-install.sh
 
 test:
-	go clean -testcache ./...
-	go test -v -race -covermode=atomic ./...
+	go clean -testcache
+	GOFLAGS=-mod=mod go test -v -race -covermode=atomic ./...
 
-	go clean -testcache ./...
-	go test -v -covermode=count -coverprofile=profile.cov ./...
+	go clean -testcache
+	GOFLAGS=-mod=mod go test -v -covermode=count -coverprofile=profile.cov ./...
 
 fmt:
-	go fmt ./...
+	GOFLAGS=-mod=mod go fmt ./...
 
 validate:
 	golangci-lint run
 
 lint:
-	golint cmd/... internal/... models/... pkg/...
-	go vet ${SERVER_DIR}/main.go
+	GOFLAGS=-mod=mod go vet ./...
 
 ineffassign:
 	ineffassign .
 
 run: build
-	$(shell bin/vegeta-server --ip=localhost --port=8000)
+	./bin/vegeta-server --ip=localhost --port=8000
 
 container:
 	docker build -t vegeta-server:latest .
